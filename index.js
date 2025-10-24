@@ -5,6 +5,7 @@ const path = require("path");
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 client.commands = new Collection();
+client.teams = []; // store teams.json here
 
 // Load commands
 const commandsPath = path.join(__dirname, "commands");
@@ -17,6 +18,19 @@ for (const file of commandFiles) {
   client.commands.set(command.data.name, command);
   commands.push(command.data.toJSON());
 }
+
+// Load teams.json
+const TEAMS_FILE = path.join(__dirname, "teams.json");
+function loadTeams() {
+  if (fs.existsSync(TEAMS_FILE)) {
+    client.teams = JSON.parse(fs.readFileSync(TEAMS_FILE, "utf-8"));
+    console.log(`Loaded ${client.teams.length} teams from teams.json`);
+  } else {
+    client.teams = [];
+    console.log("teams.json not found. Starting with empty team list.");
+  }
+}
+loadTeams();
 
 // Register slash commands
 const rest = new REST({ version: "10" }).setToken(process.env.TOKEN);
@@ -35,17 +49,25 @@ const rest = new REST({ version: "10" }).setToken(process.env.TOKEN);
 })();
 
 // Event: interaction create
-client.on("interactionCreate", async interaction => {
-  if (!interaction.isCommand()) return;
-
-  const command = client.commands.get(interaction.commandName);
-  if (!command) return;
-
+client.on("interactionCreate", async (interaction) => {
   try {
-    await command.execute(interaction);
+    if (interaction.isCommand()) {
+      const command = client.commands.get(interaction.commandName);
+      if (!command) return;
+      await command.execute(interaction);
+    } else if (interaction.isButton()) {
+      // Route button interactions to command-specific handlers
+      for (const command of client.commands.values()) {
+        if (command.handleButton) {
+          await command.handleButton(interaction);
+        }
+      }
+    }
   } catch (err) {
     console.error(err);
-    await interaction.reply({ content: "Error executing command.", ephemeral: true });
+    if (interaction.isRepliable()) {
+      await interaction.reply({ content: "Error executing interaction.", ephemeral: true }).catch(() => {});
+    }
   }
 });
 
