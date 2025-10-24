@@ -16,7 +16,7 @@ module.exports = {
     )
     .addStringOption(option =>
       option.setName("emoji")
-        .setDescription("The emoji for the team")
+        .setDescription("The emoji for the team (standard or custom)")
         .setRequired(true)
     ),
 
@@ -27,7 +27,14 @@ module.exports = {
     }
 
     const role = interaction.options.getRole("role");
-    const emoji = interaction.options.getString("emoji");
+    let emojiInput = interaction.options.getString("emoji");
+
+    // Detect custom emoji ID if provided
+    let emojiId = emojiInput;
+    const customEmojiMatch = emojiInput.match(/<a?:\w+:(\d+)>/);
+    if (customEmojiMatch) {
+      emojiId = customEmojiMatch[1]; // just the ID
+    }
 
     // Read existing teams
     let teams = [];
@@ -45,12 +52,12 @@ module.exports = {
     const newTeam = {
       id: role.id,
       name: role.name,
-      emoji: emoji
+      emoji: emojiId
     };
     teams.push(newTeam);
 
     fs.writeFileSync(TEAMS_FILE, JSON.stringify(teams, null, 2));
 
-    await interaction.reply({ content: `Team **${role.name}** added with emoji ${emoji}!` });
+    await interaction.reply({ content: `Team **${role.name}** added with emoji ${emojiInput}!` });
   },
 };
