@@ -1,4 +1,10 @@
-const { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, Events } = require("discord.js");
+const {
+  SlashCommandBuilder,
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+  EmbedBuilder,
+} = require("discord.js");
 const { roles, channels } = require("../config.js");
 const fs = require("fs");
 const path = require("path");
@@ -10,89 +16,128 @@ module.exports = {
     .setName("offer")
     .setDescription("Offer a player to join your team")
     .addUserOption(option =>
-      option.setName("user")
+      option
+        .setName("user")
         .setDescription("The user to offer")
         .setRequired(true)
     ),
 
   async execute(interaction) {
     const member = interaction.member;
+    const allowedRoles = [
+      roles.franchiseOwner,
+      roles.generalManager,
+      roles.headCoach,
+      roles.assistantCoach,
+    ];
 
-    // Check if member has any of the allowed coaching roles
-    const allowedRoles = [roles.franchiseOwner, roles.generalManager, roles.headCoach, roles.assistantCoach];
     const hasRole = allowedRoles.some(r => member.roles.cache.has(r));
-    if (!hasRole) {
-      return interaction.reply({ content: "You are not allowed to use this command.", ephemeral: true });
-    }
+    if (!hasRole)
+      return interaction.reply({
+        content: "You are not allowed to use this command.",
+        ephemeral: true,
+      });
 
-    // Determine team role of the coach
-    if (!fs.existsSync(TEAMS_FILE)) return interaction.reply({ content: "No teams configured.", ephemeral: true });
+    if (!fs.existsSync(TEAMS_FILE))
+      return interaction.reply({ content: "No teams configured.", ephemeral: true });
+
     const teams = JSON.parse(fs.readFileSync(TEAMS_FILE, "utf-8"));
     const teamRole = member.roles.cache.find(r => teams.some(t => t.id === r.id));
-    if (!teamRole) return interaction.reply({ content: "You are not assigned to a team.", ephemeral: true });
+    if (!teamRole)
+      return interaction.reply({
+        content: "You are not assigned to a team.",
+        ephemeral: true,
+      });
 
     const targetUser = interaction.options.getUser("user");
     const targetMember = await interaction.guild.members.fetch(targetUser.id);
-
-    // Check if target already has a team role
-    const targetTeamRole = targetMember.roles.cache.find(r => teams.some(t => t.id === r.id));
-    if (targetTeamRole) return interaction.reply({ content: "This user is already on a team.", ephemeral: true });
+    const targetTeamRole = targetMember.roles.cache.find(r =>
+      teams.some(t => t.id === r.id)
+    );
+    if (targetTeamRole)
+      return interaction.reply({
+        content: "This user is already on a team.",
+        ephemeral: true,
+      });
 
     // Build embed & buttons
     const embed = new EmbedBuilder()
       .setTitle("Team Offer")
-      .setDescription(`You have been offered to join **${teamRole.name}** by ${member}.`)
+      .setDescription(
+        `You have been offered to join **${teamRole.name}** by ${member}.`
+      )
       .setColor(teamRole.hexColor || 0x00ff00);
 
     const row = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
-        .setCustomId(`offer_accept_${targetUser.id}_${teamRole.id}`)
+        .setCustomId(`offer_accept_${interaction.guild.id}_${teamRole.id}_${member.id}`)
         .setLabel("Accept")
         .setStyle(ButtonStyle.Success),
       new ButtonBuilder()
-        .setCustomId(`offer_decline_${targetUser.id}_${teamRole.id}`)
+        .setCustomId(`offer_decline_${interaction.guild.id}_${teamRole.id}_${member.id}`)
         .setLabel("Decline")
         .setStyle(ButtonStyle.Danger)
     );
 
-    // DM the user
     try {
       await targetUser.send({ embeds: [embed], components: [row] });
-      await interaction.reply({ content: `Offer sent to ${targetUser.tag}.`, ephemeral: true });
+      await interaction.reply({
+        content: `Offer sent to ${targetUser.tag}.`,
+        ephemeral: true,
+      });
     } catch {
-      return interaction.reply({ content: "Could not DM the user.", ephemeral: true });
+      return interaction.reply({
+        content: "Could not DM the user.",
+        ephemeral: true,
+      });
     }
   },
-};
 
-// Handle button interactions globally in your bot
-module.exports.handleButton = async (interaction) => {
-  if (!interaction.isButton()) return;
+  async handleButton(interaction, client) {
+    if (!interaction.isButton()) return;
+    const [action, type, guildId, teamId, offererId] =
+      interaction.customId.split("_");
 
-  const transactionsChannel = interaction.guild.channels.cache.get(channels.transactions);
-  if (!transactionsChannel) return;
+    if (action !== "offer") return;
+    const guild = client.guilds.cache.get(guildId);
+    if (!guild)
+      return interaction.reply({
+        content: "Could not locate the server for this offer.",
+        ephemeral: true,
+      });
 
-  // Parse customId: offer_accept_userid_teamid or offer_decline_userid_teamid
-  const [action, , userId, teamId] = interaction.customId.split("_");
+    const member = await guild.members.fetch(interaction.user.id).catch(() => null);
+    const offerer = await guild.members.fetch(offererId).catch(() => null);
+    const teamRole = guild.roles.cache.get(teamId);
+    const transactionsChannel = guild.channels.cache.get(channels.transactions);
 
-  if (interaction.user.id !== userId) {
-    return interaction.reply({ content: "This button is not for you.", ephemeral: true });
-  }
+    if (!member || !teamRole)
+      return interaction.reply({
+        content: "Something went wrong with this offer.",
+        ephemeral: true,
+      });
 
-  const guild = interaction.guild;
-  const member = await guild.members.fetch(userId);
-
-  if (action === "offer" && interaction.customId.startsWith("offer_accept")) {
-    // Assign team role
-    const role = guild.roles.cache.get(teamId);
-    if (role) await member.roles.add(role);
-    if (transactionsChannel) transactionsChannel.send(`${member} has accepted the offer and joined **${role.name}**.`);
-    await interaction.update({ content: `You accepted the offer to join **${role.name}**.`, embeds: [], components: [] });
-  }
-
-  if (action === "offer" && interaction.customId.startsWith("offer_decline")) {
-    const role = guild.roles.cache.get(teamId);
-    if (transactionsChannel) transactionsChannel.send(`${member} declined the offer to join **${role.name}**.`);
-    await interaction.update({ content: `You declined the offer to join **${role?.name || "the team"}**.`, embeds: [], components: [] });
-  }
+    if (type === "accept") {
+      await member.roles.add(teamRole).catch(() => {});
+      if (transactionsChannel)
+        transactionsChannel.send(
+          `${member} has **accepted** the offer from ${offerer || "a coach"} and joined **${teamRole.name}**.`
+        );
+      await interaction.update({
+        content: `✅ You accepted the offer to join **${teamRole.name}**.`,
+        embeds: [],
+        components: [],
+      });
+    } else if (type === "decline") {
+      if (transactionsChannel)
+        transactionsChannel.send(
+          `${member} has **declined** the offer from ${offerer || "a coach"} to join **${teamRole.name}**.`
+        );
+      await interaction.update({
+        content: `❌ You declined the offer to join **${teamRole.name}**.`,
+        embeds: [],
+        components: [],
+      });
+    }
+  },
 };
