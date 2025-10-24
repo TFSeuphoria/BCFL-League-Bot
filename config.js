@@ -1,22 +1,23 @@
 module.exports = {
   // Role IDs
   roles: {
-    commissioner: "ROLE_ID_HERE",
-    streamer: "ROLE_ID_HERE",
-    referee: "ROLE_ID_HERE",
-    franchiseOwner: "ROLE_ID_HERE",
-    generalManager: "ROLE_ID_HERE",
-    headCoach: "ROLE_ID_HERE",
-    assistantCoach: "ROLE_ID_HERE",
-    suspended: "ROLE_ID_HERE",
+    commissioner: "1431116703626039326",
+    streamer: "1431120804883464382",
+    referee: "1431120577313378385",
+    franchiseOwner: "1431120626126557234",
+    generalManager: "1431120671425171508",
+    headCoach: "1431120720896983111",
+    assistantCoach: "1431120760440754307",
+    suspended: "1431120760440754307",
+    pickupHoster: "1431124129901445191",
   },
 
   // Channel IDs
   channels: {
-    pickups: "CHANNEL_ID_HERE",
-    transactions: "CHANNEL_ID_HERE",
-    streams: "CHANNEL_ID_HERE",
-    agency: "CHANNEL_ID_HERE",
-    gametimes: "CHANNEL_ID_HERE",
+    pickups: "1431120511366205450",
+    transactions: "1431115399809859604",
+    streams: "1431125419754655836",
+    agency: "1431116638778032159",
+    gametimes: "1431115922671927376",
   },
 };
