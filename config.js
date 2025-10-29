@@ -1,5 +1,5 @@
 module.exports = {
-  // Role IDs
+  // === Role IDs ===
   roles: {
     commissioner: "1431116703626039326",
     streamer: "1431120804883464382",
@@ -10,9 +10,10 @@ module.exports = {
     assistantCoach: "1431120760440754307",
     suspended: "1431120760440754307",
     pickupHoster: "1431124129901445191",
+    mediaHoster: "1432942736834822144", // ✅ newly added
   },
 
-  // Channel IDs
+  // === Channel IDs ===
   channels: {
     pickups: "1431120511366205450",
     transactions: "1431115399809859604",
