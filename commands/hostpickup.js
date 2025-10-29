@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, PermissionFlagsBits } = require("discord.js");
+const { SlashCommandBuilder } = require("discord.js");
 const config = require("../config.js");
 
 module.exports = {
@@ -8,38 +8,39 @@ module.exports = {
     .addStringOption(option =>
       option
         .setName("server_name")
-        .setDescription("Name of the pickup server.")
+        .setDescription("The name of the pickup server.")
         .setRequired(true)
     ),
 
   async execute(interaction) {
-    const pickupHosterRole = config.roles.pickupHoster;
-    const pickupsChannelId = config.channels.pickups;
+    const member = interaction.member;
+    const pickupsChannel = interaction.guild.channels.cache.get(config.channels.pickups);
+    const requiredRole = config.roles.pickupHoster;
 
-    // Permission check
-    if (!interaction.member.roles.cache.has(pickupHosterRole)) {
-      return await interaction.reply({
-        content: "You don't have permission to host pickups.",
+    // role check
+    if (!member.roles.cache.has(requiredRole)) {
+      return interaction.reply({
+        content: "You must have the Pickup Hoster role to use this command.",
+        ephemeral: true,
+      });
+    }
+
+    if (!pickupsChannel) {
+      return interaction.reply({
+        content: "The pickups channel isn't configured properly.",
         ephemeral: true,
       });
     }
 
     const serverName = interaction.options.getString("server_name");
-    const pickupsChannel = interaction.guild.channels.cache.get(pickupsChannelId);
 
-    if (!pickupsChannel) {
-      return await interaction.reply({
-        content: "Pickups channel not found. Please check your config.js.",
-        ephemeral: true,
-      });
-    }
-
+    // send pickup announcement
     await pickupsChannel.send({
-      content: `${interaction.user} is hosting a pickup! The server name is **${serverName}**!\n||@everyone||`,
+      content: `${member} is hosting a pickup! The server name is **${serverName}**!\n||@everyone||`,
     });
 
     await interaction.reply({
-      content: `Pickup hosted successfully in <#${pickupsChannelId}>.`,
+      content: "Pickup announcement sent successfully.",
       ephemeral: true,
     });
   },
