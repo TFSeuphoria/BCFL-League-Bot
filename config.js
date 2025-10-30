@@ -9,7 +9,7 @@ module.exports = {
     headCoach: "1431120720896983111",
     assistantCoach: "1431120760440754307",
     suspended: "1431120760440754307",
-    pickupHoster: "1431124129901445191",
+    pickupHoster: "1431124956112228392",
     mediaHoster: "1432942736834822144", // ✅ newly added
   },
 
